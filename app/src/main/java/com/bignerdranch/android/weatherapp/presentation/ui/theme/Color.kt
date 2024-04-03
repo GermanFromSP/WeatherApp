@@ -1,4 +1,4 @@
-package com.bignerdranch.android.weatherapp.ui.theme
+package com.bignerdranch.android.weatherapp.presentation.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
