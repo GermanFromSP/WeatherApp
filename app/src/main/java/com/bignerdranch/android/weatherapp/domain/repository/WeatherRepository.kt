@@ -1,9 +1,7 @@
 package com.bignerdranch.android.weatherapp.domain.repository
 
-import com.bignerdranch.android.weatherapp.domain.entity.City
 import com.bignerdranch.android.weatherapp.domain.entity.Forecast
 import com.bignerdranch.android.weatherapp.domain.entity.Weather
-import kotlinx.coroutines.flow.Flow
 
 interface WeatherRepository {
 
