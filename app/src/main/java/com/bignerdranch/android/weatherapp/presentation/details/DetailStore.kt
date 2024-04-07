@@ -5,54 +5,166 @@ import com.arkivanov.mvikotlin.core.store.Store
 import com.arkivanov.mvikotlin.core.store.StoreFactory
 import com.arkivanov.mvikotlin.extensions.coroutines.CoroutineBootstrapper
 import com.arkivanov.mvikotlin.extensions.coroutines.CoroutineExecutor
+import com.bignerdranch.android.weatherapp.domain.entity.City
+import com.bignerdranch.android.weatherapp.domain.entity.Forecast
+import com.bignerdranch.android.weatherapp.domain.usecase.ChangeFavouriteStateUseCase
+import com.bignerdranch.android.weatherapp.domain.usecase.GetForecastUseCase
+import com.bignerdranch.android.weatherapp.domain.usecase.ObserveFavouriteStateUseCase
 import com.bignerdranch.android.weatherapp.presentation.details.DetailStore.Intent
 import com.bignerdranch.android.weatherapp.presentation.details.DetailStore.Label
 import com.bignerdranch.android.weatherapp.presentation.details.DetailStore.State
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 internal interface DetailStore : Store<Intent, State, Label> {
 
     sealed interface Intent {
+
+        data object ClickBack : Intent
+
+        data object ClickChangeFavouriteStatus : Intent
     }
 
-    data class State(val todo: Unit)
+    data class State(
+        val city: City,
+        val isFavourite: Boolean,
+        val forecastState: ForecastState
+    ) {
+
+        sealed interface ForecastState {
+
+            data object Initial : ForecastState
+
+            data object Loading : ForecastState
+
+            data object Error : ForecastState
+
+            data class Loaded(val forecast: Forecast) : ForecastState
+        }
+    }
 
     sealed interface Label {
+
+        data object ClickBack : Label
     }
 }
 
-internal class DetailStoreFactory(
-    private val storeFactory: StoreFactory
+internal class DetailStoreFactory @Inject constructor(
+    private val storeFactory: StoreFactory,
+    private val getForecastUseCase: GetForecastUseCase,
+    private val changeFavouriteStateUseCase: ChangeFavouriteStateUseCase,
+    private val observeFavouriteStateUseCase: ObserveFavouriteStateUseCase
 ) {
 
-    fun create(): DetailStore =
+    fun create(city: City): DetailStore =
         object : DetailStore, Store<Intent, State, Label> by storeFactory.create(
             name = "DetailStore",
-            initialState = State(Unit),
-            bootstrapper = BootstrapperImpl(),
+            initialState = State(
+                city = city,
+                isFavourite = false,
+                forecastState = State.ForecastState.Initial
+            ),
+            bootstrapper = BootstrapperImpl(city),
             executorFactory = ::ExecutorImpl,
             reducer = ReducerImpl
         ) {}
 
     private sealed interface Action {
+
+        data class FavouriteStatusChange(val isFavourite: Boolean) : Action
+
+        data class ForecastLoaded(val forecast: Forecast) : Action
+
+        data object ForecastStartLoading : Action
+
+        data object ForecastLoadingError : Action
     }
 
     private sealed interface Msg {
+
+        data class FavouriteStatusChange(val isFavourite: Boolean) : Msg
+
+        data class ForecastLoaded(val forecast: Forecast) : Msg
+
+        data object ForecastStartLoading : Msg
+
+        data object ForecastLoadingError : Msg
     }
 
-    private class BootstrapperImpl : CoroutineBootstrapper<Action>() {
+    private inner class BootstrapperImpl(private val city: City) : CoroutineBootstrapper<Action>() {
         override fun invoke() {
+            scope.launch {
+                observeFavouriteStateUseCase(cityId = city.id).collect {
+                    dispatch(Action.FavouriteStatusChange(it))
+                }
+            }
+
+            scope.launch {
+                dispatch(Action.ForecastStartLoading)
+                try {
+                    val forecast = getForecastUseCase(city.id)
+                    dispatch(Action.ForecastLoaded(forecast))
+                } catch (e: Exception) {
+                    dispatch(Action.ForecastLoadingError)
+                }
+            }
         }
     }
 
-    private class ExecutorImpl : CoroutineExecutor<Intent, Action, State, Msg, Label>() {
+    private inner class ExecutorImpl : CoroutineExecutor<Intent, Action, State, Msg, Label>() {
         override fun executeIntent(intent: Intent, getState: () -> State) {
+            when (intent) {
+                Intent.ClickBack -> {
+                    publish(Label.ClickBack)
+                }
+
+                Intent.ClickChangeFavouriteStatus -> {
+                    scope.launch {
+                        val state = getState()
+                        if (state.isFavourite) {
+                            changeFavouriteStateUseCase.removeFromFavourite(state.city.id)
+                        } else {
+                            changeFavouriteStateUseCase.addToFavourite(state.city)
+                        }
+                    }
+                }
+            }
         }
 
         override fun executeAction(action: Action, getState: () -> State) {
+            when(action) {
+
+                is Action.FavouriteStatusChange -> {
+                    dispatch(Msg.FavouriteStatusChange(action.isFavourite))
+                }
+                is Action.ForecastLoaded -> {
+                    dispatch(Msg.ForecastLoaded(action.forecast))
+                }
+                Action.ForecastLoadingError -> {
+                    dispatch(Msg.ForecastLoadingError)
+                }
+                Action.ForecastStartLoading -> {
+                    dispatch(Msg.ForecastStartLoading)
+                }
+            }
         }
     }
 
     private object ReducerImpl : Reducer<State, Msg> {
-        override fun State.reduce(msg: Msg): State = State(Unit)
+        override fun State.reduce(msg: Msg): State = when(msg) {
+            is Msg.FavouriteStatusChange -> {
+                copy(isFavourite=msg.isFavourite)
+            }
+            is Msg.ForecastLoaded -> {
+                copy(forecastState = State.ForecastState.Loaded(forecast = msg.forecast))
+            }
+            Msg.ForecastLoadingError -> {
+                copy(forecastState = State.ForecastState.Error)
+            }
+            Msg.ForecastStartLoading -> {
+                copy(forecastState = State.ForecastState.Loading)
+            }
+        }
     }
 }
