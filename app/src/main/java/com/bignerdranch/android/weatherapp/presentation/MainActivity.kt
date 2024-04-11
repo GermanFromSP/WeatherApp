@@ -1,39 +1,34 @@
 package com.bignerdranch.android.weatherapp.presentation
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.bignerdranch.android.weatherapp.data.network.api.ApiFactory
-import com.bignerdranch.android.weatherapp.presentation.ui.theme.WeatherAppTheme
+import com.arkivanov.decompose.defaultComponentContext
+import com.bignerdranch.android.weatherapp.WeatherApp
+import com.bignerdranch.android.weatherapp.domain.usecase.ChangeFavouriteStateUseCase
+import com.bignerdranch.android.weatherapp.domain.usecase.GetCurrentWeatherUseCase
+import com.bignerdranch.android.weatherapp.domain.usecase.SearchCityUseCase
+import com.bignerdranch.android.weatherapp.presentation.root.DefaultRootComponent
+import com.bignerdranch.android.weatherapp.presentation.root.RootContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 class MainActivity : ComponentActivity() {
+
+
+    @Inject
+    lateinit var rootComponentFactory: DefaultRootComponent.Factory
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        (applicationContext as WeatherApp).applicationComponent.inject(this)
         super.onCreate(savedInstanceState)
 
-        val apiService = ApiFactory.apiService
+        val root = rootComponentFactory.create(defaultComponentContext())
 
-        CoroutineScope(Dispatchers.Main).launch {
-            val currentWeather = apiService.loadCurrentWeather("Moscow")
-            val forecast = apiService.loadForecast("Moscow")
-            val cities = apiService.searchCity("Moscow")
-
-            Log.d("MainActivity", "weather: $currentWeather ")
-            Log.d("MainActivity", "forecast: $forecast ")
-            Log.d("MainActivity", "cities: $cities ")
-        }
         setContent {
-
+            RootContent(component = root)
         }
     }
 }

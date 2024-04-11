@@ -16,8 +16,7 @@ import com.bignerdranch.android.weatherapp.presentation.details.DetailStore.Stat
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-internal interface DetailStore : Store<Intent, State, Label> {
+ interface DetailStore : Store<Intent, State, Label> {
 
     sealed interface Intent {
 
@@ -49,8 +48,7 @@ internal interface DetailStore : Store<Intent, State, Label> {
         data object ClickBack : Label
     }
 }
-
-internal class DetailStoreFactory @Inject constructor(
+ class DetailStoreFactory @Inject constructor(
     private val storeFactory: StoreFactory,
     private val getForecastUseCase: GetForecastUseCase,
     private val changeFavouriteStateUseCase: ChangeFavouriteStateUseCase,
