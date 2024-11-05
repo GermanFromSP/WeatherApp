@@ -1,4 +1,4 @@
-package com.bignerdranch.android.weatherapp.presentation.ui.theme
+package com.bignerdranch.android.weatherapp.presentation.common.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

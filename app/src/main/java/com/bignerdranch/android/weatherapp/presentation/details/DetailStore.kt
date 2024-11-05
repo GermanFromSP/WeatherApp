@@ -13,22 +13,27 @@ import com.bignerdranch.android.weatherapp.domain.usecase.ObserveFavouriteStateU
 import com.bignerdranch.android.weatherapp.presentation.details.DetailStore.Intent
 import com.bignerdranch.android.weatherapp.presentation.details.DetailStore.Label
 import com.bignerdranch.android.weatherapp.presentation.details.DetailStore.State
-import kotlinx.coroutines.flow.collect
+import com.bignerdranch.android.weatherapp.presentation.search.OpenReason
 import kotlinx.coroutines.launch
 import javax.inject.Inject
- interface DetailStore : Store<Intent, State, Label> {
+
+interface DetailStore : Store<Intent, State, Label> {
 
     sealed interface Intent {
 
         data object ClickBack : Intent
 
+        data object ClickUpdate : Intent
+
         data object ClickChangeFavouriteStatus : Intent
+
     }
 
     data class State(
         val city: City,
         val isFavourite: Boolean,
-        val forecastState: ForecastState
+        val forecastState: ForecastState,
+        val openReason: OpenReason
     ) {
 
         sealed interface ForecastState {
@@ -46,6 +51,7 @@ import javax.inject.Inject
     sealed interface Label {
 
         data object ClickBack : Label
+        data object NavigateToFavourite : Label
     }
 }
  class DetailStoreFactory @Inject constructor(
@@ -55,13 +61,14 @@ import javax.inject.Inject
     private val observeFavouriteStateUseCase: ObserveFavouriteStateUseCase
 ) {
 
-    fun create(city: City): DetailStore =
+    fun create(city: City, openReason: OpenReason): DetailStore =
         object : DetailStore, Store<Intent, State, Label> by storeFactory.create(
             name = "DetailStore",
             initialState = State(
                 city = city,
                 isFavourite = false,
-                forecastState = State.ForecastState.Initial
+                forecastState = State.ForecastState.Initial,
+                openReason = openReason
             ),
             bootstrapper = BootstrapperImpl(city),
             executorFactory = ::ExecutorImpl,
@@ -101,7 +108,7 @@ import javax.inject.Inject
             scope.launch {
                 dispatch(Action.ForecastStartLoading)
                 try {
-                    val forecast = getForecastUseCase(city.id)
+                    val forecast = getForecastUseCase(city.name, 4)
                     dispatch(Action.ForecastLoaded(forecast))
                 } catch (e: Exception) {
                     dispatch(Action.ForecastLoadingError)
@@ -117,15 +124,23 @@ import javax.inject.Inject
                     publish(Label.ClickBack)
                 }
 
-                Intent.ClickChangeFavouriteStatus -> {
+                Intent.ClickUpdate -> {
                     scope.launch {
-                        val state = getState()
-                        if (state.isFavourite) {
-                            changeFavouriteStateUseCase.removeFromFavourite(state.city.id)
-                        } else {
-                            changeFavouriteStateUseCase.addToFavourite(state.city)
+                        dispatch(Msg.ForecastStartLoading)
+                        try {
+                            val forecast = getForecastUseCase(getState.invoke().city.name, 4)
+                            dispatch(Msg.ForecastLoaded(forecast))
+                        } catch (e: Exception) {
+                            dispatch(Msg.ForecastLoadingError)
                         }
                     }
+                }
+
+                Intent.ClickChangeFavouriteStatus -> {
+                    scope.launch {
+                        changeFavouriteStateUseCase.addToFavourite(getState.invoke().city)
+                    }
+                    publish(label = Label.NavigateToFavourite)
                 }
             }
         }
@@ -145,15 +160,14 @@ import javax.inject.Inject
                 Action.ForecastStartLoading -> {
                     dispatch(Msg.ForecastStartLoading)
                 }
+
             }
         }
     }
 
     private object ReducerImpl : Reducer<State, Msg> {
         override fun State.reduce(msg: Msg): State = when(msg) {
-            is Msg.FavouriteStatusChange -> {
-                copy(isFavourite=msg.isFavourite)
-            }
+
             is Msg.ForecastLoaded -> {
                 copy(forecastState = State.ForecastState.Loaded(forecast = msg.forecast))
             }
@@ -163,6 +177,8 @@ import javax.inject.Inject
             Msg.ForecastStartLoading -> {
                 copy(forecastState = State.ForecastState.Loading)
             }
+
+            is Msg.FavouriteStatusChange -> copy(isFavourite = msg.isFavourite)
         }
     }
 }

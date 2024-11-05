@@ -9,7 +9,11 @@ interface FavouriteComponent {
 
     fun onClickSearch()
 
-    fun onClickAddFavourite()
+    fun getLocationWeather(cityName: String)
+
+    fun saveRemovedElementsCache()
+
+    fun onClickRemoveFromFavourite(cityId: Int)
 
     fun onCityItemClick(city: City)
 }

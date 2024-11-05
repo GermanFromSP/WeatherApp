@@ -59,11 +59,28 @@ android {
 
 dependencies {
 
+    implementation(libs.accompanist.insets)
+    implementation(libs.accompanist.permissions)
+    implementation(libs.accompanist.systemui)
+
+    implementation (libs.androidx.lifecycle.viewmodel.ktx)
+
+    implementation (libs.datastore.rxjava2)
+
+    implementation (libs.androidx.lifecycle.viewmodel.compose)
+
+    implementation(libs.play.services.location)
+
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.activity.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.ui)
+
+    implementation (libs.androidx.fragment.ktx)
+
+    implementation(libs.kotlinx.serialization)
+    implementation(libs.datastore.rxjava2)
 
     implementation(libs.mvikotlin.core)
     implementation(libs.mvikotlin.main)
@@ -73,6 +90,11 @@ dependencies {
     implementation(libs.decompose.jetpack)
 
     implementation(libs.room.core)
+
+    implementation(libs.androidsvg)
+    implementation(libs.androidx.datastore.core.android)
+    implementation(libs.androidx.runtime.livedata)
+
     ksp(libs.room.compiler)
 
     implementation(libs.dagger.core)
@@ -82,6 +104,7 @@ dependencies {
 
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter)
+    implementation(libs.interceptor)
     implementation(libs.icons)
 
     implementation(libs.ui.graphics)

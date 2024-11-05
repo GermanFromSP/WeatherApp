@@ -1,14 +1,20 @@
 [versions]
-agp = "8.1.2"
+agp = "8.5.1"
 
+fragment-ktx = "1.8.3"
+lifecycle-viewmodel-compose = "2.8.6"
 mvikotlin = "3.2.1"
 decompose="2.1.2"
+play-services-location = "21.3.0"
 room="2.6.1"
 ksp="1.9.22-1.0.16"
 dagger="2.50"
 glide="1.0.0-beta01"
 retrofit="2.11.0"
 parcelize="1.9.22"
+interceptor_vers = "4.11.0"
+
+material3 ="1.2.1"
 
 org-jetbrains-kotlin-android = "1.8.10"
 core-ktx = "1.9.0"
@@ -18,8 +24,13 @@ espresso-core = "3.5.1"
 lifecycle-runtime-ktx = "2.7.0"
 activity-compose = "1.8.2"
 compose-bom = "2023.03.00"
+datastore-core-android = "1.1.1"
+runtime-livedata = "1.7.2"
 
 [libraries]
+androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment-ktx" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle-viewmodel-compose" }
+androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle-viewmodel-compose" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
@@ -34,6 +45,7 @@ mvikotlin-coroutine = { group = "com.arkivanov.mvikotlin", name="mvikotlin-exten
 decompose-core = { group = "com.arkivanov.decompose", name="decompose", version.ref = "decompose" }
 decompose-jetpack = { group = "com.arkivanov.decompose", name="extensions-compose-jetpack", version.ref = "decompose" }
 
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 room-core = { group = "androidx.room", name="room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name="room-compiler", version.ref = "room" }
 
@@ -44,6 +56,7 @@ glide = { group = "com.github.bumptech.glide", name="compose", version.ref = "gl
 
 retrofit-converter = { group = "com.squareup.retrofit2", name="converter-gson", version.ref = "retrofit" }
 retrofit-core = { group = "com.squareup.retrofit2", name="retrofit", version.ref = "retrofit" }
+interceptor = { group = "com.squareup.okhttp3", name="logging-interceptor", version.ref = "interceptor_vers"}
 
 ui = { group = "androidx.compose.ui", name = "ui" }
 ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
@@ -51,8 +64,20 @@ ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-material3 = { group = "androidx.compose.material3", name = "material3" }
+material3 = { group = "androidx.compose.material3", name = "material3", version = "1.2.1" }
+androidsvg = { group = "com.caverock", name = "androidsvg-aar", version = "1.4" }
 icons = { group = "androidx.compose.material", name = "material-icons-extended" }
+
+accompanist-permissions = {group = "com.google.accompanist", name="accompanist-permissions", version = "0.32.0"}
+accompanist-systemui = {group = "com.google.accompanist", name="accompanist-systemuicontroller", version = "0.32.0"}
+accompanist-insets = {group = "com.google.accompanist", name="accompanist-insets", version = "0.14.0"}
+androidx-datastore-core-android = { group = "androidx.datastore", name = "datastore-core-android", version.ref = "datastore-core-android" }
+
+kotlinx-serialization = {group = "org.jetbrains.kotlinx", name="kotlinx-serialization-json", version = "1.4.1"}
+datastore-rxjava2 = {group = "androidx.datastore", name="datastore-preferences", version = "1.1.1"}
+androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtime-livedata" }
+
+
 
 [plugins]
 com-android-application = { id = "com.android.application", version.ref = "agp" }

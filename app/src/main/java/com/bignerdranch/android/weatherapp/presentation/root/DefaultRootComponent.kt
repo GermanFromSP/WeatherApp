@@ -4,6 +4,7 @@ import android.os.Parcelable
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.router.stack.ChildStack
 import com.arkivanov.decompose.router.stack.StackNavigation
+import com.arkivanov.decompose.router.stack.bringToFront
 import com.arkivanov.decompose.router.stack.childStack
 import com.arkivanov.decompose.router.stack.pop
 import com.arkivanov.decompose.router.stack.push
@@ -18,21 +19,23 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.parcelize.Parcelize
 
-
 class DefaultRootComponent @AssistedInject constructor(
     private val detailStoreFactory: DefaultDetailsComponent.Factory,
     private val favouriteStoreFactory: DefaultFavouriteComponent.Factory,
     private val searchStoreFactory: DefaultSearchComponent.Factory,
-    @Assisted("componentContext") componentContext: ComponentContext
+    @Assisted("componentContext") componentContext: ComponentContext,
 ) : RootComponent, ComponentContext by componentContext {
 
-    private val navigation = StackNavigation<Config>()
+    val navigation = StackNavigation<Config>()
 
     override val stack: Value<ChildStack<*, RootComponent.Child>> = childStack(
         source = navigation,
-        initialConfiguration = Config.Favourite,
+        initialConfiguration = Config.Details(
+            city = City(name = ""),
+            openReason = OpenReason.SeeDetails
+        ),
         childFactory = ::child,
-        handleBackButton = true
+        handleBackButton = false
     )
 
     private fun child(
@@ -43,20 +46,34 @@ class DefaultRootComponent @AssistedInject constructor(
             is Config.Details -> {
                 val component = detailStoreFactory.create(
                     city = config.city,
-                    onBackClicked = { navigation.pop() },
-                    componentContext = componentContext
+                    onBackClicked = {
+                        if (config.isFirstRun)
+                            navigation.push(Config.Favourite)
+                        else navigation.pop()
+                    },
+                    componentContext = componentContext,
+                    navigateToFavourite = {
+                        navigation.bringToFront(Config.Favourite)
+                    },
+                    openReason = config.openReason
                 )
                 RootComponent.Child.Details(component)
             }
 
             Config.Favourite -> {
+
                 val component = favouriteStoreFactory.create(
-                    onCityItemClicked = { navigation.push(Config.Details(it)) },
-                    onAddFavouriteClicked = {
-                        navigation.push(Config.Search(OpenReason.AddToFavourite))
+                    onCityItemClicked = {
+                        navigation.push(
+                            Config.Details(
+                                city = it,
+                                isFirstRun = false,
+                                openReason = OpenReason.SeeDetails
+                            )
+                        )
                     },
                     onSearchClicked = {
-                        navigation.push(Config.Search(OpenReason.RegularSearch))
+                        navigation.push(Config.Search)
                     },
                     componentContext = componentContext
                 )
@@ -66,16 +83,23 @@ class DefaultRootComponent @AssistedInject constructor(
             is Config.Search -> {
                 val component = searchStoreFactory.create(
                     componentContext = componentContext,
-                    openReason = config.openReason,
                     onBackClicked = { navigation.pop() },
                     onCitySavedToFavourite = { navigation.pop() },
-                    onForecastForCityRequested = { navigation.push(Config.Details(it)) }
+                    onForecastForCityRequested = { city, openReason ->
+
+                        navigation.push(
+                            Config.Details(
+                                city = city,
+                                isFirstRun = false,
+                                openReason = openReason
+                            )
+                        )
+                    }
                 )
                 RootComponent.Child.Search(component)
             }
         }
     }
-
 
     sealed interface Config : Parcelable {
 
@@ -83,17 +107,22 @@ class DefaultRootComponent @AssistedInject constructor(
         data object Favourite : Config
 
         @Parcelize
-        data class Search(val openReason: OpenReason) : Config
+        data object Search : Config
 
         @Parcelize
-        data class Details(val city: City) : Config
+        data class Details(
+            val city: City,
+            val isFirstRun: Boolean = true,
+            val openReason: OpenReason
+        ) : Config
     }
 
     @AssistedFactory
     interface Factory {
 
         fun create(
-            @Assisted("componentContext") componentContext: ComponentContext
-        ): DefaultRootComponent
+            @Assisted("componentContext") componentContext: ComponentContext,
+
+            ): DefaultRootComponent
     }
 }

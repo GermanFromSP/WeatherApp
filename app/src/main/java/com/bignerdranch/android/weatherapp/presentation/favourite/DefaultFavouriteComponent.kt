@@ -5,20 +5,19 @@ import com.arkivanov.mvikotlin.core.instancekeeper.getStore
 import com.arkivanov.mvikotlin.extensions.coroutines.labels
 import com.arkivanov.mvikotlin.extensions.coroutines.stateFlow
 import com.bignerdranch.android.weatherapp.domain.entity.City
-import com.bignerdranch.android.weatherapp.presentation.extensions.componentScope
+import com.bignerdranch.android.weatherapp.presentation.common.extensions.componentScope
+import com.bignerdranch.android.weatherapp.presentation.search.OpenReason
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 class DefaultFavouriteComponent @AssistedInject constructor(
    private val favouriteStoreFactory: FavouriteStoreFactory,
    @Assisted("onCityItemClicked") private val onCityItemClicked: (City) -> Unit,
-   @Assisted("onSearchClicked") private val onSearchClicked: () -> Unit,
-   @Assisted("onAddFavouriteClicked") private val onAddFavouriteClicked: () -> Unit,
+   @Assisted("onSearchClicked") private val onSearchClicked: (OpenReason) -> Unit,
    @Assisted("componentContext") componentContext: ComponentContext
 ) : FavouriteComponent, ComponentContext by componentContext {
 
@@ -34,11 +33,7 @@ class DefaultFavouriteComponent @AssistedInject constructor(
                     }
 
                     FavouriteStore.Label.ClickSearch -> {
-                        onSearchClicked()
-                    }
-
-                    FavouriteStore.Label.ClickToFavourite -> {
-                        onAddFavouriteClicked()
+                        onSearchClicked(OpenReason.RegularSearch)
                     }
                 }
             }
@@ -52,9 +47,18 @@ class DefaultFavouriteComponent @AssistedInject constructor(
         store.accept(FavouriteStore.Intent.ClickSearch)
     }
 
-    override fun onClickAddFavourite() {
-        store.accept(FavouriteStore.Intent.ClickToFavourite)
+    override fun getLocationWeather(cityName: String) {
+        store.accept(FavouriteStore.Intent.GetLocationWeather(cityName))
     }
+
+    override fun saveRemovedElementsCache() {
+        store.accept(FavouriteStore.Intent.SaveRemovedCache)
+    }
+
+    override fun onClickRemoveFromFavourite(cityId: Int) {
+        store.accept(FavouriteStore.Intent.RemoveFromFavourite(cityId))
+    }
+
 
     override fun onCityItemClick(city: City) {
         store.accept(FavouriteStore.Intent.CityItemClicked(city))
@@ -65,8 +69,7 @@ class DefaultFavouriteComponent @AssistedInject constructor(
 
         fun create(
             @Assisted("onCityItemClicked") onCityItemClicked: (City) -> Unit,
-            @Assisted("onSearchClicked") onSearchClicked: () -> Unit,
-            @Assisted("onAddFavouriteClicked") onAddFavouriteClicked: () -> Unit,
+            @Assisted("onSearchClicked") onSearchClicked: (OpenReason) -> Unit,
             @Assisted("componentContext") componentContext: ComponentContext
         ): DefaultFavouriteComponent
     }

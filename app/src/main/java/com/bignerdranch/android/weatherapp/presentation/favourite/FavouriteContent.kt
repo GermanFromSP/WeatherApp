@@ -1,241 +1,197 @@
 package com.bignerdranch.android.weatherapp.presentation.favourite
 
-import android.util.Log
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import com.bignerdranch.android.weatherapp.R
 import com.bignerdranch.android.weatherapp.domain.entity.City
-import com.bignerdranch.android.weatherapp.presentation.extensions.tempToFormattedString
-import com.bignerdranch.android.weatherapp.presentation.ui.theme.CardGradients
-import com.bignerdranch.android.weatherapp.presentation.ui.theme.Gradient
-import com.bignerdranch.android.weatherapp.presentation.ui.theme.Orange
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
+import com.bignerdranch.android.weatherapp.presentation.MainActivity.Companion.CITY_KEY
+import com.bignerdranch.android.weatherapp.presentation.MainActivity.Companion.LAST_LOCATION
+import com.bignerdranch.android.weatherapp.presentation.common.SharedPreferencesService
+import com.bignerdranch.android.weatherapp.presentation.common.UserStore
+import com.bignerdranch.android.weatherapp.presentation.favourite.elements.ListView
+import com.bignerdranch.android.weatherapp.presentation.favourite.elements.SearchCard
+import com.bignerdranch.android.weatherapp.presentation.favourite.elements.TableView
+import com.bignerdranch.android.weatherapp.presentation.favourite.elements.TopBarFavouriteScreen
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavouriteContent(component: FavouriteComponent) {
 
     val state by component.model.collectAsState()
+    val context = LocalContext.current
+    val store = UserStore(context)
+    val viewState by store.viewStatusFlow.collectAsState(initial = FavouriteCitiesListViewState.INITIAL)
 
-    LazyVerticalGrid(
-        modifier = Modifier.fillMaxSize(),
-        columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item(span = { GridItemSpan(2) }) {
-            SearchCard(onClick = { component.onClickSearch() })
+    var deleteItemsState by rememberSaveable { mutableStateOf(false) }
+
+    var deleteOneItemState by rememberSaveable { mutableStateOf(false) }
+
+    val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
+
+    val systemUiController = rememberSystemUiController()
+    val isDarkTheme = isSystemInDarkTheme()
+    val statusBarColor = MaterialTheme.colorScheme.background
+
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = !isDarkTheme
+        )
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_DESTROY) {
+                component.saveRemovedElementsCache()
+            }
         }
-        itemsIndexed(
-            items = state.cityItems,
-            key = { _, item -> item.city.id }
-        ) { index, item ->
-            CityCard(
-                cityItem = item,
-                index = index,
-                onCityItemClick = { component.onCityItemClick(item.city) }
-            )
-        }
-        item {
-            AddToFavouriteCityCard(onClick = { component.onClickAddFavourite() })
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-}
 
-@OptIn(ExperimentalGlideComposeApi::class)
-@Composable
-private fun CityCard(
-    onCityItemClick: () -> Unit,
-    cityItem: FavouriteStore.State.CityItem,
-    index: Int
-) {
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val sharedPreferences = SharedPreferencesService(LocalContext.current)
+    val coroutineScope = rememberCoroutineScope()
 
-    val gradient = getGradientByIndex(index)
-    Card(
-        modifier = Modifier
-            .fillMaxSize()
-            .shadow(
-                elevation = 16.dp,
-                spotColor = gradient.shadowColor,
-                shape = MaterialTheme.shapes.extraLarge
-            ),
-        colors = CardDefaults.cardColors(containerColor = Color.Blue),
-        shape = MaterialTheme.shapes.extraLarge
-    ) {
-        Box(
-            modifier = Modifier
-                .clickable { onCityItemClick() }
-                .background(gradient.primaryGradient)
-                .fillMaxSize()
-                .sizeIn(minHeight = 196.dp)
-                .drawBehind {
-                    drawCircle(
-                        brush = gradient.secondaryGradient,
-                        center = Offset(
-                            x = center.x - size.width / 10,
-                            y = center.y + size.height / 2
-                        ),
-                        radius = size.maxDimension / 2
-                    )
-                }
-                .padding(24.dp)
+    Scaffold(
+        topBar = {
 
-        ) {
-            when (val weatherState = cityItem.weatherState) {
-                FavouriteStore.State.WeatherState.Error -> {
-
-                }
-
-                FavouriteStore.State.WeatherState.Initial -> {
-
-                }
-
-                is FavouriteStore.State.WeatherState.Loaded -> {
-
-                    Log.d("IMAGEURL", weatherState.iconUrl)
-                    GlideImage(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(56.dp),
-                        model = weatherState.iconUrl,
-                        contentDescription = null
-                    )
-                    Text(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(bottom = 24.dp),
-                        text = weatherState.tempC.tempToFormattedString(),
-                        color = MaterialTheme.colorScheme.background,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 48.sp),
-                    )
-                }
-
-                FavouriteStore.State.WeatherState.Loading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.background,
-                    )
-                }
+            Column {
+                TopBarFavouriteScreen(
+                    scrollBehavior = scrollBehavior,
+                    title = stringResource(R.string.weather),
+                    onTableClick = {
+                        coroutineScope.launch {
+                            store.setViewStatus(FavouriteCitiesListViewState.TABLE)
+                        }
+                    },
+                    onListClick = {
+                        coroutineScope.launch {
+                            store.setViewStatus(FavouriteCitiesListViewState.LIST)
+                        }
+                    },
+                    onDeleteClick = { deleteItemsState = !deleteItemsState },
+                    onDoneClick = {
+                        deleteItemsState = false
+                        deleteOneItemState = false
+                    },
+                    deleteState = deleteItemsState || deleteOneItemState,
+                    canDelete = state.cityItems.cityItems.isNotEmpty()
+                )
+                SearchCard(onClick = component::onClickSearch)
             }
 
-            Text(
-                modifier = Modifier.align(Alignment.BottomStart),
-                text = cityItem.city.name,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.background
-            )
-        }
+        },
+        modifier = Modifier
+            .statusBarsPadding()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.statusBars)
 
+    ) { padding ->
+
+
+        AnimatedContent(
+            targetState = viewState,
+            transitionSpec = {
+                fadeIn(tween(500)) togetherWith fadeOut(tween(200))
+            },
+            label = ""
+        ) { viewState ->
+
+            when (viewState) {
+                FavouriteCitiesListViewState.LIST -> {
+                    ListView(
+                        padding = padding,
+                        items = state,
+                        onCityItemClick = {
+                            if (deleteItemsState) deleteItemsState = false
+                            component.onCityItemClick(it)
+                        },
+                        deleteItemsState = deleteItemsState,
+                        onDeleteClick = { cityId ->
+                            val deletedCity =
+                                state.cityItems.cityItems.find { it.city.id == cityId }?.city
+                            checkCityToBeDeleted(sharedPreferences, deletedCity)
+                            component.onClickRemoveFromFavourite(cityId)
+                        },
+                        onLongClick = { deleteOneItemState = it },
+                        deleteOneItemState = deleteOneItemState,
+                        getLocationWeather = component::getLocationWeather
+                    )
+                }
+
+                FavouriteCitiesListViewState.TABLE -> {
+                    TableView(
+                        padding = padding,
+                        items = state,
+                        onCityItemClick = component::onCityItemClick,
+                        onDeleteClick = { cityId ->
+                            val deletedCity =
+                                state.cityItems.cityItems.find { it.city.id == cityId }?.city
+                            checkCityToBeDeleted(sharedPreferences, deletedCity)
+                            component.onClickRemoveFromFavourite(cityId)
+                        },
+                        deleteItemsState = deleteItemsState,
+                        deleteOneItemState = deleteOneItemState,
+                        onLongClick = { deleteOneItemState = it },
+                        getLocationWeather = component::getLocationWeather
+                    )
+                }
+
+                FavouriteCitiesListViewState.INITIAL -> {}
+            }
+        }
     }
 }
 
-@Composable
-private fun AddToFavouriteCityCard(
-    onClick: () -> Unit
+private fun checkCityToBeDeleted(
+    sharedPreferences: SharedPreferencesService,
+    deletedCity: City?
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        shape = MaterialTheme.shapes.extraLarge,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground)
-    ) {
-        Column(
-            modifier = Modifier
-                .sizeIn(minHeight = 196.dp)
-                .fillMaxWidth()
-                .clickable { onClick() }
-                .padding(24.dp)
-        ) {
-            Icon(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(16.dp)
-                    .size(48.dp),
-                imageVector = Icons.Default.Edit,
-                contentDescription = null,
-                tint = Orange
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = stringResource(R.string.button_add_favourite),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-        }
+    val cityForCheck = sharedPreferences.getData(CITY_KEY, null)
+    if (deletedCity?.name == cityForCheck?.name) {
+        val lastLocation = sharedPreferences.getData(LAST_LOCATION, null)
+        sharedPreferences.saveData(CITY_KEY, lastLocation)
     }
 }
 
-@Composable
-private fun SearchCard(
-    onClick: () -> Unit
-) {
-    val gradient = CardGradients.gradients[3]
-    Card(
-        shape = CircleShape
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clickable { onClick() }
-                .fillMaxWidth()
-                .background(gradient.primaryGradient),
 
-            ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                tint = MaterialTheme.colorScheme.background,
-                contentDescription = null,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-            Text(
-                text = stringResource(R.string.button_search),
-                color = MaterialTheme.colorScheme.background,
-                modifier = Modifier.padding(end = 16.dp)
-            )
-        }
-    }
-}
 
-private fun getGradientByIndex(index: Int): Gradient {
-    val gradients = CardGradients.gradients
-
-    return gradients[index % gradients.size]
-}

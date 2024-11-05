@@ -7,5 +7,5 @@ import androidx.room.PrimaryKey
 data class CityDbModel(
     @PrimaryKey val id: Int,
     val name: String,
-    val country: String,
+    val country: String
 )

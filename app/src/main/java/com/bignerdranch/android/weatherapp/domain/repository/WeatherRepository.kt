@@ -1,12 +1,12 @@
 package com.bignerdranch.android.weatherapp.domain.repository
 
 import com.bignerdranch.android.weatherapp.domain.entity.Forecast
-import com.bignerdranch.android.weatherapp.domain.entity.Weather
+import com.bignerdranch.android.weatherapp.domain.entity.CurrentWeather
 
 interface WeatherRepository {
 
-    suspend fun getWeather(cityId: Int): Weather
+    suspend fun getWeather(cityName: String): CurrentWeather
 
-    suspend fun getForecast(cityId: Int): Forecast
+    suspend fun getForecast(cityName: String, daysCount: Int): Forecast
 
 }
